@@ -1,6 +1,7 @@
 #include <CppUTest/TestHarness.h>
 
 #include "array.hpp"
+#include "list.hpp"
 
 
 TEST_GROUP(Array)
@@ -141,4 +142,119 @@ TEST(Array, Redo)
   UNSIGNED_LONGS_EQUAL(2, array.Size());
   LONGS_EQUAL(0, array[0]);
   LONGS_EQUAL(1, array[1]);
+}
+
+TEST_GROUP(List)
+{
+};
+
+TEST(List, Constructor)
+{
+  pdc::List<int> list;
+  CHECK(list.IsEmpty());
+  UNSIGNED_LONGS_EQUAL(0, list.Size());
+}
+
+TEST(List, Size)
+{
+  pdc::List<int> list;
+  UNSIGNED_LONGS_EQUAL(0, list.Size());
+
+  list = list.PushBack(1);
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+
+  list = list.PushFront(2);
+  UNSIGNED_LONGS_EQUAL(2, list.Size());
+
+  list = list.Insert(++list.begin(), 3);
+  UNSIGNED_LONGS_EQUAL(3, list.Size());
+
+  list = list.Undo();
+  UNSIGNED_LONGS_EQUAL(2, list.Size());
+
+  list = list.Redo();
+  UNSIGNED_LONGS_EQUAL(3, list.Size());
+}
+
+TEST(List, PushBack)
+{
+  pdc::List<int> list;
+  list = list.PushBack(0);
+  LONGS_EQUAL(0, *list.begin());
+
+  list = list.PushBack(1);
+  LONGS_EQUAL(0, *list.begin());
+  LONGS_EQUAL(1, *(++list.begin()));
+}
+
+TEST(List, PushFront)
+{
+  pdc::List<int> list;
+  list = list.PushFront(0);
+  LONGS_EQUAL(0, *list.begin());
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+
+  list = list.PushFront(1);
+  LONGS_EQUAL(1, *list.begin());
+  LONGS_EQUAL(0, *(++list.begin()));
+  UNSIGNED_LONGS_EQUAL(2, list.Size());
+}
+
+TEST(List, Insert)
+{
+  pdc::List<int> list;
+  list = list.PushBack(0);
+  list = list.PushBack(1);
+  list = list.Insert(list.begin(), 2);
+  LONGS_EQUAL(2, *list.begin());
+  UNSIGNED_LONGS_EQUAL(3, list.Size());
+
+  list = list.Insert(++list.begin(), 3);
+  LONGS_EQUAL(3, *(++list.begin()));
+  UNSIGNED_LONGS_EQUAL(4, list.Size());
+}
+
+TEST(List, Remove)
+{
+  pdc::List<int> list;
+  list = list.PushBack(0);
+  list = list.PushBack(1);
+  list = list.Remove(list.begin());
+  LONGS_EQUAL(1, *list.begin());
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+
+  list = list.PushFront(5);
+  list = list.Remove(++list.begin());
+  LONGS_EQUAL(5, *list.begin());
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+}
+
+TEST(List, Undo)
+{
+  pdc::List<int> list;
+  list = list.PushBack(0);
+  list = list.PushBack(1);
+  list = list.Undo();
+  LONGS_EQUAL(0, *list.begin());
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+
+  list = list.Undo();
+  UNSIGNED_LONGS_EQUAL(0, list.Size());
+}
+
+TEST(List, Redo)
+{
+  pdc::List<int> list;
+  list = list.PushBack(0);
+  list = list.PushBack(1);
+  list = list.Undo();
+  list = list.Undo();
+  list = list.Redo();
+  LONGS_EQUAL(0, *list.begin());
+  UNSIGNED_LONGS_EQUAL(1, list.Size());
+
+  list = list.Redo();
+  UNSIGNED_LONGS_EQUAL(2, list.Size());
+  LONGS_EQUAL(0, *list.begin());
+  LONGS_EQUAL(1, *(++list.begin()));
 }

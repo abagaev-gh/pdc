@@ -12,9 +12,7 @@ namespace pdc {
 
 using namespace internal;
 
-/*! Partially persistent array.
- *
- */
+/*! Partially persistent array. */
 template <typename T>
 class Array : public Persisent<Array<T>> {
   mutable std::shared_ptr<std::vector<FatNodes<T>>> array_;
@@ -22,7 +20,7 @@ class Array : public Persisent<Array<T>> {
   mutable std::shared_ptr<std::size_t> max_version_;
   mutable std::shared_ptr<FatNodes<std::size_t>> size_;
 public:
-  /*! \brief Default constructor. Create empty array. */
+  /*! \brief Default constructor. Create empty Array. */
   Array();
 
   /*! \brief Constructor with count of elements.
@@ -46,7 +44,7 @@ public:
 
   /*! \brief Array empty? 
    *
-   * \return true if еthe Array is empty, otherwise false.
+   * \return true if the Array is empty, otherwise false.
    */
   bool IsEmpty() const { return Size() == 0; }
 
@@ -59,10 +57,10 @@ public:
    */
   Array<T> Update(std::size_t idx, T value) const;
 
-  /*! \brief Add a value at the end of the array.
+  /*! \brief Add a value at the end of the Array.
    *
    * \param value Value to add.
-   * \return New version of the array with changed state.
+   * \return New version of the Array with changed state.
    */
   Array<T> PushBack(T value) const;
 
@@ -92,7 +90,8 @@ public:
 
 private:
   Array(const Array<T>& other, std::size_t version);
-  std::size_t GetSize(std::size_t version) const { return size_->Get(version).value; }
+  std::size_t GetSize(std::size_t version) const 
+    { return size_->Get(version).value; }
 };
 
 template <typename T>
