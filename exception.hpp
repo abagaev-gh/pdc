@@ -7,7 +7,7 @@ namespace pdc {
 
 /*! The incorrect version of the collection was excluded.
  *
- * Exception that is dropped by partially unmodified collections when 
+ * Exception that is dropped by partially persistent collections when 
  * attempting to modify an object not the latest version. 
  */
 class IncorrectVersionException : public std::exception {

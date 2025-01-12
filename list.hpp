@@ -9,7 +9,7 @@
 
 namespace pdc {
 
-/*! Partially persistent double-linked list. */
+/*! \brief Partially persistent double-linked list. */
 template <typename T>
 class List : public Persisent<List<T>> {
   struct Node {
@@ -22,7 +22,7 @@ class List : public Persisent<List<T>> {
   std::size_t version_ = 0;
   mutable std::shared_ptr<std::size_t> max_version_;
 public:
-  /*! Iterator for list bypass. */
+  /*! \brief Iterator for list bypass. */
   class Iterator {
     friend class List<T>;
     const List<T>* master_;

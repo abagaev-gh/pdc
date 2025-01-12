@@ -2,6 +2,7 @@
 
 #include "persistent_structure.hpp"
 #include "fat_nodes.hpp"
+#include "exception.hpp"
 
 #include <vector>
 #include <memory>
@@ -12,7 +13,7 @@ namespace pdc {
 
 using namespace internal;
 
-/*! Partially persistent array. */
+/*! \brief Partially persistent array. */
 template <typename T>
 class Array : public Persisent<Array<T>> {
   mutable std::shared_ptr<std::vector<FatNodes<T>>> array_;
@@ -53,7 +54,8 @@ public:
    * \param idx The index of the element to be changed. 
    * \param value The new value of the element.
    * \return New version of the Array with changed state.
-   * \throw std::out_of_range if idx is out of range.
+   * \exception IncorrectVersionException 
+   *            If the method is not called on the latest version of the Array.
    */
   Array<T> Update(std::size_t idx, T value) const;
 
@@ -61,6 +63,8 @@ public:
    *
    * \param value Value to add.
    * \return New version of the Array with changed state.
+   * \exception IncorrectVersionException 
+   *            If the method is not called on the latest version of the Array.
    */
   Array<T> PushBack(T value) const;
 
@@ -92,6 +96,9 @@ private:
   Array(const Array<T>& other, std::size_t version);
   std::size_t GetSize(std::size_t version) const 
     { return size_->Get(version).value; }
+  void CheckVersion() const 
+    { if (version_ != *max_version_) throw IncorrectVersionException(); }
+
 };
 
 template <typename T>
@@ -130,6 +137,7 @@ Array<T>::Array(const Array<T>& other, std::size_t version)
 template <typename T>
 Array<T> Array<T>::Update(std::size_t idx, T value) const
 {
+  CheckVersion();
   if (idx < 0 || idx >= Size()) {
     throw std::out_of_range("Update");
   }
@@ -140,6 +148,7 @@ Array<T> Array<T>::Update(std::size_t idx, T value) const
 template <typename T>
 Array<T> Array<T>::PushBack(T value) const
 {
+  CheckVersion();
   ++(*max_version_);
   array_->emplace_back(*max_version_, value);
   size_->Add((*max_version_), GetSize((*max_version_)) + 1);
