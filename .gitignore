@@ -1,7 +1,6 @@
 .vscode/
 main.cpp
 *.o
-tests
 main
 html/
 latex/
