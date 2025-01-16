@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
+#include <mutex>
 
 
 namespace internal {
@@ -20,6 +21,7 @@ struct Node {
 template <typename T>
 class FatNodes {  
   std::vector<Node<T>> nodes_;
+  mutable std::unique_ptr<std::mutex> mutex_;
 public:
   FatNodes();
   FatNodes(const T& v);
@@ -46,17 +48,19 @@ FatNodes<T>::FatNodes(const T& v)
 template <typename T>
 FatNodes<T>::FatNodes(std::size_t version, const T& v)
   : nodes_(1, {version, v})
+  , mutex_(std::make_unique<std::mutex>())
 {
 }
 
 template <typename T>
 const Node<T>& FatNodes<T>::Get(std::size_t version) const
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   auto it = std::find_if(nodes_.rbegin(), nodes_.rend(), 
     [&version](const Node<T>& node) {
       if (node.version <= version) {
         if (node.is_deleted) {
-          throw("Not found  node");
+          throw std::runtime_error("Not found  node");
         }
         return true;
       }
@@ -71,6 +75,7 @@ const Node<T>& FatNodes<T>::Get(std::size_t version) const
 template <typename T>
 Node<T>& FatNodes<T>::Get(std::size_t version) 
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   const auto& item = const_cast<const FatNodes<T>*>(this)->Get(version);
   return const_cast<Node<T>&>(item);
 }
@@ -78,12 +83,14 @@ Node<T>& FatNodes<T>::Get(std::size_t version)
 template <typename T>
 void FatNodes<T>::Add(std::size_t version, T value)
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   nodes_.emplace_back(version, value);
 }
 
 template <typename T>
 void FatNodes<T>::Remove(std::size_t version)
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   if (HasItem(version)) {
     Get(version).is_deleted = true;
   }
@@ -92,6 +99,7 @@ void FatNodes<T>::Remove(std::size_t version)
 template <typename T>
 bool FatNodes<T>::HasItem(std::size_t version) const
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   auto it = std::find_if(nodes_.rbegin(), nodes_.rend(), 
     [&version](const Node<T>& node) {
       if (node.version <= version) {

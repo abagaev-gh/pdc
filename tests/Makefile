@@ -1,6 +1,6 @@
 SRCMODULES = tests.cpp main_tests.cpp
 OBJMODULES = $(SRCMODULES:.cpp=.o)
-CXXLIBS = -Wall -g -lCppUTest -lCppUTestExt
+CXXLIBS = -Wall -g -lCppUTest -lCppUTestExt -lpthread
 CXX = g++
 
 %.o: %.cpp

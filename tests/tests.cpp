@@ -1,5 +1,7 @@
 #include <CppUTest/TestHarness.h>
 
+#include <thread>
+
 #include "../array.hpp"
 #include "../list.hpp"
 
@@ -260,4 +262,37 @@ TEST(List, Redo)
   LONGS_EQUAL(0, *list.begin());
   LONGS_EQUAL(1, *(++list.begin()));
 }
+
+// TEST(List, Threaded)
+// {
+//   pdc::List<int> list;
+
+//   bool thread1_throw = false;
+//   bool thread2_throw = false;
+
+//   std::thread thread1([list, &thread1_throw]() mutable {
+//     try {
+//       for (int i = 0; i < 100; i++) {
+//         list = list.PushBack(1);
+//       }
+//     } catch (const pdc::IncorrectVersionException&) {
+//       thread1_throw = true;
+//     }
+//   });
+
+//   std::thread thread2([list, &thread2_throw]() mutable {
+//     try {
+//       for (int i = 0; i < 100; i++) {
+//         list = list.PushBack(1);
+//       }
+//     } catch (const pdc::IncorrectVersionException&) {
+//       thread2_throw = true;
+//     }
+//   });
+
+//   thread1.join();
+//   thread2.join();
+  
+//   CHECK(thread1_throw || thread2_throw);
+// }
 

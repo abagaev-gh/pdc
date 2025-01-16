@@ -6,6 +6,8 @@
 #include <list>
 #include <memory>
 #include <iostream>
+#include <mutex>
+#include <atomic>
 
 namespace pdc {
 
@@ -16,11 +18,14 @@ class List : public Persisent<List<T>> {
     T value;
     std::size_t version;
     bool is_deleted = false;
-    Node(std::size_t ver, T val) : value(val), version(ver) { }
+    std::unique_ptr<std::mutex> mutex;
+    Node(std::size_t ver, T val) 
+      : value(val), version(ver), mutex(std::make_unique<std::mutex>()) { }
   };
   mutable std::shared_ptr<std::list<Node>> list_;
   std::size_t version_ = 0;
-  mutable std::shared_ptr<std::size_t> max_version_;
+  mutable std::shared_ptr<std::atomic<std::size_t>> max_version_;
+  mutable std::shared_ptr<std::mutex> mutex_;
 public:
   /*! \brief Iterator for list bypass. */
   class Iterator {
@@ -48,7 +53,7 @@ public:
    *
    * \return true if the List is empty, otherwise false.
    */
-  bool IsEmpty() const { return begin() == end(); }
+  bool IsEmpty() const { std::lock_guard<std::mutex> l(*mutex_); return begin() == end(); }
 
   /*! \brief Size of List. 
    *
@@ -132,7 +137,8 @@ private:
 template <typename T>
 List<T>::List()
   : list_(std::make_shared<std::list<Node>>())
-  , max_version_(std::make_shared<std::size_t>(0))
+  , max_version_(std::make_shared<std::atomic<std::size_t>>(0))
+  , mutex_(std::make_shared<std::mutex>())
 {
 }
 
@@ -141,12 +147,14 @@ List<T>::List(const List<T>& other, std::size_t version)
   : list_(other.list_)
   , version_(version)
   , max_version_(other.max_version_)
+  , mutex_(other.mutex_)
 {
 }
 
 template <typename T>
 std::size_t List<T>::Size() const
 {
+  std::lock_guard<std::mutex> l(*mutex_);
   std::size_t res = 0;
   for ([[maybe_unused]] const auto& item : *this) {
     ++res;
@@ -157,8 +165,14 @@ std::size_t List<T>::Size() const
 template <typename T>
 List<T> List<T>::PushBack(T value) const
 {
+  std::lock_guard<std::mutex> l(*mutex_);
   CheckVersion();
   ++(*max_version_);
+  if (!list_->empty()) {
+    std::lock_guard<std::mutex> l2(*((--list_->end())->mutex));
+    list_->emplace_back(*max_version_, std::move(value));
+    return List<T>(*this, *max_version_);
+  }
   list_->emplace_back(*max_version_, std::move(value));
   return List<T>(*this, *max_version_);
 }
@@ -166,8 +180,10 @@ List<T> List<T>::PushBack(T value) const
 template <typename T>
 List<T> List<T>::PushFront(T value) const
 {
+  std::lock_guard<std::mutex> l(*mutex_);
   CheckVersion();
   ++(*max_version_);
+  std::lock_guard<std::mutex> l2(*(list_->begin()->mutex));
   list_->emplace_front(*max_version_, std::move(value));
   return List<T>(*this, *max_version_);
 }
@@ -175,8 +191,10 @@ List<T> List<T>::PushFront(T value) const
 template <typename T>
 List<T> List<T>::Insert(const List<T>::Iterator& pos, T value) const
 {
+  std::lock_guard<std::mutex> l(*mutex_);
   CheckVersion();
   ++(*max_version_);
+  std::lock_guard<std::mutex> l2(*(pos.it_->mutex));
   list_->insert(pos.it_, List<T>::Node(*max_version_, std::move(value)));
   return List<T>(*this, *max_version_);
 }
@@ -184,8 +202,10 @@ List<T> List<T>::Insert(const List<T>::Iterator& pos, T value) const
 template <typename T>
 List<T> List<T>::Remove(const List<T>::Iterator& pos) const
 {
+  std::lock_guard<std::mutex> l(*mutex_);
   CheckVersion();
   ++(*max_version_);
+  std::lock_guard<std::mutex> l2(*(pos.it_->mutex));
   pos.it_->is_deleted = true;
   return List<T>(*this, *max_version_);
 }
@@ -229,6 +249,7 @@ List<T>::Iterator::SkipUnavailable(
   List<T>::Iterator::list_iterator end = forward ? master_->list_->end() 
                                                  : master_->list_->begin();
   while (out != end) {
+    std::lock_guard<std::mutex> l(*(out->mutex));
     if (out->version == master_->version_) { // can't be deleted
       break;
     }

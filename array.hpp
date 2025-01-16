@@ -8,6 +8,7 @@
 #include <memory>
 #include <algorithm>
 #include <exception>
+#include <mutex>
 
 namespace pdc {
 
@@ -20,6 +21,7 @@ class Array : public Persisent<Array<T>> {
   std::size_t version_ = 0;
   mutable std::shared_ptr<std::size_t> max_version_;
   mutable std::shared_ptr<FatNodes<std::size_t>> size_;
+  mutable std::shared_ptr<std::mutex> mutex_;
 public:
   /*! \brief Default constructor. Create empty Array. */
   Array();
@@ -41,7 +43,8 @@ public:
    *
    * \return Array size. 
    */
-  std::size_t Size() const { return GetSize(version_); }
+  std::size_t Size() const 
+    { std::lock_guard<std::mutex> lk(*mutex_); return GetSize(version_); }
 
   /*! \brief Array empty? 
    *
@@ -73,8 +76,8 @@ public:
    * \param idx The index of the element.
    * \return Element to reading.
    */
-  const T& operator[](std::size_t idx) const 
-    { return (*array_)[idx].Get(version_).value; }
+  T operator[](std::size_t idx) const 
+    { std::lock_guard<std::mutex> lk(*mutex_); return (*array_)[idx].Get(version_).value; }
 
   /*! \brief Returns the previous version of the Array.
    *
@@ -98,7 +101,6 @@ private:
     { return size_->Get(version).value; }
   void CheckVersion() const 
     { if (version_ != *max_version_) throw IncorrectVersionException(); }
-
 };
 
 template <typename T>
@@ -118,6 +120,7 @@ Array<T>::Array(std::size_t count, T value)
   : array_(std::make_shared<std::vector<FatNodes<T>>>())
   , max_version_(std::make_shared<std::size_t>(0))
   , size_(std::make_shared<FatNodes<std::size_t>>(0, count))
+  , mutex_(std::make_shared<std::mutex>())
 {
   array_->reserve(count);
   for (std::size_t i = 0; i < count; ++i) {
@@ -137,6 +140,7 @@ Array<T>::Array(const Array<T>& other, std::size_t version)
 template <typename T>
 Array<T> Array<T>::Update(std::size_t idx, T value) const
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   CheckVersion();
   if (idx < 0 || idx >= Size()) {
     throw std::out_of_range("Update");
@@ -148,6 +152,7 @@ Array<T> Array<T>::Update(std::size_t idx, T value) const
 template <typename T>
 Array<T> Array<T>::PushBack(T value) const
 {
+  std::lock_guard<std::mutex> lk(*mutex_);
   CheckVersion();
   ++(*max_version_);
   array_->emplace_back(*max_version_, value);
